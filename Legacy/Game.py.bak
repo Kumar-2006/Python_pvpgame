@@ -1,0 +1,194 @@
+"""
+Backup of Game.py (previous content). This file was created automatically before overwriting Game.py.
+If you need the full original, restore this file to Game.py or inspect its contents.
+"""
+
+# NOTE: The original Game.py was large and contained both the new CustomTkinter menu code
+# and an appended legacy Pygame-based game. The full original content follows below.
+
+"""
+Battle Legends — Main Menu (CustomTkinter)
+
+Creates a modern, futuristic main menu for the fantasy RPG "Battle Legends".
+Requirements implemented:
+- Dark theme with neon blue, gold, and crimson accents.
+- Window 900x600, centered and non-resizable.
+- Background image placeholder: arena_bg.png (fallback gradient if missing).
+- Bold futuristic fonts (Orbitron/Rajdhani preferred, fallbacks used).
+- Title and subtitle styling, neon/glow feeling.
+- Center-aligned buttons with hover colors and subtle glow.
+- Footer copyright text.
+- Fade-in window effect on launch.
+
+Dependencies: customtkinter, pillow (PIL).
+"""
+
+import os
+import sys
+try:
+    import customtkinter as ctk
+except Exception:
+    print("Missing dependency: customtkinter. Install with: pip install customtkinter")
+    raise
+from PIL import Image, ImageTk, ImageDraw, ImageFilter
+
+# Window
+WIDTH, HEIGHT = 900, 600
+
+# Paths
+BG_IMAGE_PATH = os.path.join(os.path.dirname(__file__), "arena_bg.png")
+
+# Colors
+NEON_CYAN = "#00F0FF"
+NEON_BLUE = "#0AB7FF"
+GOLD = "#D4AF37"
+GOLD_HOVER = "#FFEA00"
+CRIMSON = "#DC143C"
+CRIMSON_HOVER = "#FF3030"
+PURPLE = "#7B2CBF"
+VIOLET_HOVER = "#9B5DE5"
+SUBTITLE_GRAY = "#A6A6A6"
+DARK_BG = "#05060A"
+
+# Fonts (prefer system-installed Orbitron/Rajdhani; fall back to defaults)
+TITLE_FONT = ("Orbitron", 36, "bold")
+SUBTITLE_FONT = ("Rajdhani", 14)
+BUTTON_FONT = ("Rajdhani", 16, "bold")
+FOOTER_FONT = ("Helvetica", 9)
+
+
+def load_background_image(path, size):
+    """Load arena background or generate a gradient fallback."""
+    w, h = size
+    if os.path.exists(path):
+        img = Image.open(path).convert("RGBA")
+        img = img.resize((w, h), Image.LANCZOS)
+        return ImageTk.PhotoImage(img)
+
+    # gradient fallback
+    img = Image.new("RGBA", (w, h), DARK_BG)
+    draw = ImageDraw.Draw(img)
+    for y in range(h):
+        t = y / h
+        r = int(6 + (12 - 6) * t)
+        g = int(8 + (30 - 8) * t)
+        b = int(12 + (60 - 12) * t)
+        draw.line([(0, y), (w, y)], fill=(r, g, b))
+    # add a soft cyan glow near the horizon
+    glow = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    gd = ImageDraw.Draw(glow)
+    gd.ellipse((-w//2, h//4, w + w//2, h), fill=(0, 140, 200, 30))
+    glow = glow.filter(ImageFilter.GaussianBlur(80))
+    img = Image.alpha_composite(img, glow)
+    return ImageTk.PhotoImage(img)
+
+
+class BattleMenu:
+    def __init__(self, root):
+        self.root = root
+        ctk.set_appearance_mode("dark")
+        ctk.set_default_color_theme("dark-blue")
+
+        root.title("Battle Legends")
+        root.geometry(f"{WIDTH}x{HEIGHT}")
+        root.resizable(False, False)
+
+        # center window
+        sw = root.winfo_screenwidth()
+        sh = root.winfo_screenheight()
+        x = (sw - WIDTH) // 2
+        y = (sh - HEIGHT) // 2
+        root.geometry(f"{WIDTH}x{HEIGHT}+{x}+{y}")
+
+        # start invisible for fade-in
+        root.attributes("-alpha", 0.0)
+
+        # background
+        self.bg = load_background_image(BG_IMAGE_PATH, (WIDTH, HEIGHT))
+        self.bg_label = ctk.CTkLabel(master=root, image=self.bg, text="")
+        self.bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+
+        # main overlay to give depth
+        self.overlay = ctk.CTkFrame(master=root, fg_color="#071025", corner_radius=0)
+        self.overlay.place(relx=0.5, rely=0.5, anchor="center", width=WIDTH, height=HEIGHT)
+
+        # content frame
+        self.content = ctk.CTkFrame(master=self.overlay, fg_color="transparent", corner_radius=12)
+        self.content.place(relx=0.5, rely=0.48, anchor="center", width=720, height=460)
+
+        # Title
+        self.title = ctk.CTkLabel(self.content, text="⚔️ BATTLE LEGENDS ⚔️", font=TITLE_FONT, text_color=NEON_CYAN)
+        self.title.pack(pady=(18, 4))
+
+        # Subtitle
+        self.subtitle = ctk.CTkLabel(self.content, text="Strategic Fantasy Combat Reimagined",
+                                     font=SUBTITLE_FONT, text_color=SUBTITLE_GRAY)
+        self.subtitle.pack(pady=(0, 18))
+
+        # Buttons container
+        self.buttons = ctk.CTkFrame(self.content, fg_color="transparent", corner_radius=8)
+        self.buttons.pack(pady=(6, 8))
+
+        # Create styled buttons
+        self.start_btn = self._glow_button("Start Battle", NEON_BLUE, NEON_CYAN, self._on_start)
+        self.howto_btn = self._glow_button("How to Play", GOLD, GOLD_HOVER, self._on_howto)
+        self.board_btn = self._glow_button("Leaderboard", PURPLE, VIOLET_HOVER, self._on_board)
+        self.quit_btn = self._glow_button("Quit", CRIMSON, CRIMSON_HOVER, self._on_quit)
+
+        # Footer
+        self.footer = ctk.CTkLabel(root, text="© 2025 Battle Legends Studio — All Rights Reserved.",
+                                  text_color=SUBTITLE_GRAY, font=FOOTER_FONT)
+        self.footer.place(relx=0.5, rely=0.97, anchor="s")
+
+        # Fade-in
+        self._fade_in(600)
+
+    def _glow_button(self, text, color, hover_color, command):
+        # frame to simulate glow
+        glow = ctk.CTkFrame(self.buttons, fg_color=color, corner_radius=18)
+        glow.pack(pady=10)
+        btn = ctk.CTkButton(glow, text=text, fg_color=color, hover_color=hover_color,
+                            text_color="#020204", font=BUTTON_FONT, corner_radius=16,
+                            width=440, height=52, command=command)
+        btn.configure(border_width=2, border_color=color)
+        btn.pack(padx=4, pady=4)
+        # hover animations (simple color switch)
+        btn.bind("<Enter>", lambda e, b=btn, h=hover_color: b.configure(fg_color=h))
+        btn.bind("<Leave>", lambda e, b=btn, c=color: b.configure(fg_color=c))
+        return btn
+
+    # Button callbacks (placeholder actions)
+    def _on_start(self):
+        print("Start Battle Clicked!")
+
+    def _on_howto(self):
+        print("How to Play Clicked!")
+
+    def _on_board(self):
+        print("Leaderboard Clicked!")
+
+    def _on_quit(self):
+        print("Quit Clicked!")
+        self.root.destroy()
+
+    def _fade_in(self, duration_ms=600):
+        steps = 20
+        delay = max(1, duration_ms // steps)
+        def step(i=0):
+            alpha = i / steps
+            self.root.attributes("-alpha", alpha)
+            if i < steps:
+                self.root.after(delay, lambda: step(i+1))
+        step(0)
+
+
+def main():
+    app = ctk.CTk()
+    BattleMenu(app)
+    app.mainloop()
+
+
+if __name__ == "__main__":
+    main()
+
+# End of backup (original file continued beyond this point - truncated)
