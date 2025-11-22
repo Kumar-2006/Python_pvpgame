@@ -1,0 +1,15 @@
+{
+  "background": "#1a1a2e",
+  "grid_primary": "#16213e",
+  "grid_secondary": "#0f3460",
+  "panel_bg_rgba": [22, 33, 62, 255],
+  "panel_border": "#e94560",
+  "accent": "#00d9ff",
+  "text_primary": "#ffffff",
+  "text_secondary": "#a8dadc",
+  "ui_overlay_rgba": [15, 20, 35, 255],
+  "button_border": "#00d9ff",
+  "banner_highlight": "#e94560",
+  "gradient_top": "#16213e",
+  "gradient_bottom": "#1a1a2e"
+}
