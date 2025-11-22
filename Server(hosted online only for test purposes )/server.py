@@ -140,6 +140,17 @@ class Game:
         if not attacker:
             return {"ok": False, "error": "No active attacker"}
         
+        # Handle Skip Turn
+        if move_name == "Skip Turn":
+            self.last_action = {
+                "player": player_idx,
+                "type": "skip",
+                "move": move_name
+            }
+            # Advance turn
+            self._next_turn()
+            return {"ok": True, "state": self.to_dict()}
+        
         # Determine target
         if move_name in ["Pray"]:
             target = attacker  # Self-target
@@ -161,57 +172,81 @@ class Game:
         damage = 0
         healed = 0
         effect = None
+        mana_gain = 0  # Mana/Stamina to restore after attack
         
         # Damage calculations (same as before)
         if move_name == "Slash":
             damage = int(25 / target.def_mod)
+            mana_gain = 3
         elif move_name == "Power Strike":
             damage = int(40 / target.def_mod)
+            mana_gain = 5
         elif move_name == "Shield Bash":
             damage = int(20 / target.def_mod)
+            mana_gain = 4
         elif move_name == "Spin Slash":
             damage = int(35 / target.def_mod)
+            mana_gain = 6
         elif move_name == "Quick Shot":
             damage = int(20 / target.def_mod)
+            mana_gain = 3
         elif move_name == "Double Arrow":
             damage = int((15 * 2 * attacker.attack_mod) / target.def_mod)
+            mana_gain = 5
         elif move_name == "Piercing":
             damage = int(30 * attacker.attack_mod * 1.5)
+            mana_gain = 6
         elif move_name == "Cripple":
             damage = 15
             effect = Effect("Weakness", 2, 0)
+            mana_gain = 4
         elif move_name == "Fah!!!":
             damage = 999
+            mana_gain = 10
         elif move_name == "Magic Bolt":
             damage = int(25 * attacker.attack_mod / target.def_mod)
+            mana_gain = 3
         elif move_name == "Fireball":
             damage = int(40 * attacker.attack_mod / target.def_mod)
             effect = Effect("Burn", 2, 5)
+            mana_gain = 5
         elif move_name == "Chain":
             damage = int(25 * attacker.attack_mod / target.def_mod)
+            mana_gain = 6
         elif move_name == "Drain":
             damage = int(20 / target.def_mod)
             attacker.resource = min(attacker.max_resource, attacker.resource + 10)
         elif move_name == "Smite":
             damage = int(20 * attacker.attack_mod / target.def_mod)
+            mana_gain = 3
         elif move_name == "Judgement":
             damage = int(35 * attacker.attack_mod / target.def_mod)
+            mana_gain = 5
         elif move_name == "Holy Nova":
             damage = int(20 * attacker.attack_mod / target.def_mod)
+            mana_gain = 6
         elif move_name == "Pray":
             healed = 30
+            mana_gain = 0  # No gain for self-heal
         elif move_name == "Charged Spark":
             damage = int(50 * attacker.attack_mod / target.def_mod)
+            mana_gain = 7
         elif move_name == "Run Man":
             damage = int(35 * attacker.attack_mod / target.def_mod)
+            mana_gain = 5
         elif move_name == "Spark":
             damage = int(50 * attacker.attack_mod / target.def_mod)
+            mana_gain = 7
         
         # Apply damage
         if damage > 0:
             target.hp -= damage
             if effect:
                 target.apply_effect(effect)
+        
+        # Apply mana/stamina gain from attack
+        if mana_gain > 0:
+            attacker.resource = min(attacker.max_resource, attacker.resource + mana_gain)
         
         # Apply healing
         if healed > 0:

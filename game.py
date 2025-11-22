@@ -136,7 +136,7 @@ class Character:
                 self.def_mod = 1.0
 
     def regen_resource(self):
-        self.resource = min(self.max_resource, self.resource + 5)
+        self.resource = min(self.max_resource, self.resource + 15)
 
     def update_idle_particles(self, scene):
         # Add class-specific idle particles
@@ -204,179 +204,40 @@ class NetworkClient:
 class Warrior(Character):
     def __init__(self):
         super().__init__("Warrior", 120, "Stamina", 60, "warrior")
-    def get_actions(self): return ["Slash", "Power Strike", "Shield Bash", "Spin Slash"]
     
-    def slash(self, target):
-        if self.resource >= 10:
-            self.resource -= 10
-            target.hp -= int(25 / target.def_mod)
-            return True
-        return False
+    def get_actions(self):
+        return ["Slash", "Power Strike", "Shield Bash", "Spin Slash"]
 
-    def power_strike(self, target):
-        if self.resource >= 20:
-            self.resource -= 20
-            target.hp -= int(40 / target.def_mod)
-            return True
-        return False
-
-    def shield_bash(self, target):
-        # NOTE: This method is not used. Shield Bash is handled in execute_move with delayed damage.
-        # Damage is applied in draw_character when bash animation reaches impact frame.
-        if self.resource >= 15:
-            self.resource -= 15
-            # Damage handled by execute_move -> draw_character animation system
-            return True
-        return False
-        
-    def spin_slash(self, target):
-        if self.resource >= 25:
-            self.resource -= 25
-            target.hp -= int(35 / target.def_mod)
-            return True
-        return False
 
 class Archer(Character):
     def __init__(self):
         super().__init__("Archer", 100, "Stamina", 60, "archer")
         self.float_amp = 2
         self.y_offset = 0
-    def get_actions(self): return ["Quick Shot", "Double Arrow", "Piercing", "Cripple"]
     
-    def quick_shot(self, target):
-        if self.resource >= 10:
-            self.resource -= 10
-            target.hp -= int(20 / target.def_mod)
-            return True
-        return False
-
-    def double_arrow(self, target):
-        if self.resource >= 20:
-            self.resource -= 20
-            dmg = int((15 * 2 * self.attack_mod) / target.def_mod)
-            target.hp -= dmg
-            return True
-        return False
-
-    def piercing_arrow(self, target):
-        if self.resource >= 25:
-            self.resource -= 25
-            dmg = int(30 * self.attack_mod * 1.5)
-            target.hp -= dmg
-            return True
-        return False
-
-    def crippling_shot(self, target):
-        if self.resource >= 15:
-            self.resource -= 15
-            target.hp -= 15
-            target.apply_effect(Effect("Weakness", 2, 0))
-            return True
-        return False
+    def get_actions(self):
+        return ["Quick Shot", "Double Arrow", "Piercing", "Cripple"]
 
 class Mage(Character):
     def __init__(self):
         super().__init__("Mage", 90, "Mana", 80, "mage")
-    def get_actions(self): return ["Magic Bolt", "Fireball", "Chain", "Drain"]
     
-    def magic_bolt(self, target):
-        if self.resource >= 10:
-            self.resource -= 10
-            target.hp -= int(25 * self.attack_mod / target.def_mod)
-            return True
-        return False
-
-    def fireball(self, target):
-        if self.resource >= 20:
-            self.resource -= 20
-            target.hp -= int(40 * self.attack_mod / target.def_mod)
-            target.apply_effect(Effect("Burn", 2, 5))
-            return True
-        return False
-
-    def lightning_chain(self, enemies):
-        if self.resource >= 25:
-            self.resource -= 25
-            for e in enemies:
-                e.hp -= int(25 * self.attack_mod / e.def_mod)
-            return True
-        return False
-
-    def arcane_drain(self, target):
-        if self.resource >= 15:
-            self.resource -= 15
-            target.hp -= int(20 / target.def_mod)
-            self.resource = min(self.max_resource, self.resource + 10)
-            return True
-        return False
+    def get_actions(self):
+        return ["Magic Bolt", "Fireball", "Chain", "Drain"]
 
 class Priest(Character):
     def __init__(self):
         super().__init__("Priest", 100, "Mana", 80, "priest")
-    def get_actions(self): return ["Smite", "Judgement", "Holy Nova", "Pray"]
     
-    def smite(self, target):
-        if self.resource >= 10:
-            self.resource -= 10
-            target.hp -= int(20 * self.attack_mod / target.def_mod)
-            return True
-        return False
-
-    def judgement(self, target):
-        if self.resource >= 20:
-            self.resource -= 20
-            target.hp -= int(35 * self.attack_mod / target.def_mod)
-            return True
-        return False
-
-    def holy_nova(self, enemies):
-        if self.resource >= 25:
-            self.resource -= 25
-            for e in enemies:
-                e.hp -= int(20 * self.attack_mod / e.def_mod)
-            return True
-        return False
-
-    def pray(self, self_target):
-        if self.resource >= 15:
-            self.resource -= 15
-            self_target.hp = min(self_target.max_hp, self_target.hp + 30)
-            return True
-        return False
+    def get_actions(self):
+        return ["Smite", "Judgement", "Holy Nova", "Pray"]
 
 class Somesh(Character):
     def __init__(self):
         super().__init__("Somesh", 110, "Stamina", 70, "somesh")
-    def get_actions(self): return ["Charged Spark", "Fah!!!", "Run Man", "Spark"]
     
-    def charged_spark(self, target):
-        if self.resource >= 12:
-            self.resource -= 12
-            target.hp -= int(50 * self.attack_mod / target.def_mod)
-            return True
-        return False
-
-    def fah(self, target):
-        if self.resource >= 50:
-            self.resource -= 50
-            target.hp -= 999  # Instant kill
-            self.floating_texts.append(FloatingImage(target.x + 50, target.y, self.manager.assets["fah_icon"]))
-            return True
-        return False
-
-    def run_man(self, target):
-        if self.resource >= 15:
-            self.resource -= 15
-            target.hp -= int(35 * self.attack_mod / target.def_mod)
-            return True
-        return False
-
-    def spark(self, target):
-        if self.resource >= 25:
-            self.resource -= 25
-            target.hp -= int(50 * self.attack_mod / target.def_mod)
-            return True
-        return False
+    def get_actions(self):
+        return ["Charged Spark", "Fah!!!", "Run Man", "Spark"]
 
 class Team:
     def __init__(self, members):
@@ -893,7 +754,8 @@ ACTION_DATA = {
     "Pray": {"cost": 15, "info": "Self Heal"},
     "Charged Spark": {"cost": 12, "info": "50 Dmg"},
     "Run Man": {"cost": 15, "info": "35 Dmg"},
-    "Spark": {"cost": 25, "info": "50 AoE"}
+    "Spark": {"cost": 25, "info": "50 AoE"},
+    "Skip Turn": {"cost": 0, "info": "Pass"},
 }
 
 # ---------- Scenes ----------
@@ -1701,11 +1563,21 @@ class BattleScene(Scene):
             tag_cb = self.setup_tag_menu if teammate_alive else lambda: None
             tag_btn_x = start_x + grid_width + 40
             tag_btn_y = start_y
-            tag_btn = Button(tag_btn_x, tag_btn_y, 140, btn_h * 2 + spacing_y, "TAG", tag_cb, color=tag_color)
+            # TAG and SKIP buttons: slightly bigger than attack buttons
+            special_btn_w = 160  # Bigger than attack (240) but not too wide
+            special_btn_h = 60   # Taller than attack (50)
+            tag_btn = Button(tag_btn_x, tag_btn_y, special_btn_w, special_btn_h, "TAG", tag_cb, color=tag_color)
             tag_btn.subtext = "Swap ally"
             if not teammate_alive:
                 tag_btn.disabled = True
             self.buttons.append(tag_btn)
+            
+            # Skip Turn button
+            skip_btn_x = tag_btn_x
+            skip_btn_y = tag_btn_y + special_btn_h + 10
+            skip_btn = Button(skip_btn_x, skip_btn_y, special_btn_w, special_btn_h, "SKIP", lambda: self.select_action("Skip Turn"), color=(80, 80, 120))
+            skip_btn.subtext = "Pass turn"
+            self.buttons.append(skip_btn)
         else:
             if self.multiplayer:
                 self.state = "WAITING_FOR_OPPONENT"
@@ -1859,6 +1731,13 @@ class BattleScene(Scene):
         return gained
 
     def execute_move(self, attacker, target, move_name):
+        # Handle Skip Turn
+        if move_name == "Skip Turn":
+            self.log(f"{attacker.name} skipped their turn!")
+            self.pending_next_turn = True
+            self.animation_lock_timer = 20  # Short delay
+            return
+        
         # Handle Tag Team
         if move_name.startswith("Tag:"):
             try:
@@ -3916,8 +3795,6 @@ class BattleScene(Scene):
         prompt_color = (255, 255, 255) if self.state == "PLAYER_ACTION" else (200, 200, 200)
         prompt_text = self.font.render(self.action_prompt, True, prompt_color)
         screen.blit(prompt_text, (40, SCREEN_HEIGHT - panel_height + 20))
-        hint_text = self.small_font.render("Press ESC to pause", True, (180, 180, 180))
-        screen.blit(hint_text, (SCREEN_WIDTH - 220, SCREEN_HEIGHT - panel_height + 25))
 
         for btn in self.buttons: btn.draw(screen)
         
@@ -3980,8 +3857,6 @@ class BattleScene(Scene):
             screen.blit(pause_overlay, (0, 0))
             paused_text = self.font.render("PAUSED", True, (255, 255, 255))
             screen.blit(paused_text, paused_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 - 20)))
-            resume_hint = self.small_font.render("Press ESC to resume", True, (220, 220, 220))
-            screen.blit(resume_hint, resume_hint.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 + 20)))
             self.exit_match_btn.draw(screen)
 
 class GameOverScene(Scene):

@@ -177,5 +177,6 @@ ACTION_DATA = {
     "Pray": {"cost": 15, "info": "Self Heal"},
     "Charged Spark": {"cost": 12, "info": "50 Dmg"},
     "Run Man": {"cost": 15, "info": "35 Dmg"},
-    "Spark": {"cost": 25, "info": "50 AoE"}
+    "Spark": {"cost": 25, "info": "50 AoE"},
+    "Skip Turn": {"cost": 0, "info": "Pass"}
 }
