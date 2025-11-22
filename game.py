@@ -1133,7 +1133,7 @@ class StartScene(Scene):
         screen.blit(title_shadow, title_shadow.get_rect(center=(SCREEN_WIDTH//2 + 3, 143)))
         screen.blit(title, title.get_rect(center=(SCREEN_WIDTH//2, 140)))
         
-        subtitle = self.font.render("Assemble your heroes", True, (240, 220, 180))
+        subtitle = self.font.render("Match their freak :]", True, (240, 220, 180))
         screen.blit(subtitle, subtitle.get_rect(center=(SCREEN_WIDTH//2, 240)))
         
         self.start_btn.draw(screen)
