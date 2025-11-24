@@ -600,13 +600,11 @@ class FloatingImage:
         if self.timer < self.duration:
             img = self.image.copy()
             
-            # Scale
             if self.scale != 1.0:
                 w = int(img.get_width() * self.scale)
                 h = int(img.get_height() * self.scale)
                 img = pygame.transform.scale(img, (w, h))
             
-            # Fade
             alpha = max(0, 255 - int((self.timer / self.duration) * 255))
             img.set_alpha(alpha)
             
@@ -648,13 +646,11 @@ class FloatingText:
             # Render text
             text_surf = self.font.render(self.text, True, self.color)
             
-            # Scale
             if self.scale != 1.0:
                 w = int(text_surf.get_width() * self.scale)
                 h = int(text_surf.get_height() * self.scale)
                 text_surf = pygame.transform.scale(text_surf, (w, h))
             
-            # Fade
             alpha = max(0, 255 - int((self.timer / self.duration) * 255))
             text_surf.set_alpha(alpha)
             
@@ -751,7 +747,7 @@ ACTION_DATA = {
     "Smite": {"cost": 10, "info": "20 Dmg"},
     "Judgement": {"cost": 20, "info": "35 Dmg"},
     "Holy Nova": {"cost": 25, "info": "20 AoE"},
-    "Pray": {"cost": 15, "info": "Self Heal"},
+    "Pray": {"cost": 40, "info": "Self Heal"},
     "Charged Spark": {"cost": 12, "info": "50 Dmg"},
     "Run Man": {"cost": 15, "info": "35 Dmg"},
     "Spark": {"cost": 25, "info": "50 AoE"},
@@ -1352,8 +1348,6 @@ class BattleScene(Scene):
             self.vignette.set_intensity(0.4) # Darker edges
         
         # Combat Enhancement
-        # self.crit_chance = 0.15  # REMOVED
-        # self.crit_multiplier = 1.5  # REMOVED
         self.combo_counter = 0  # Track consecutive hits
         self.last_attacker = None  # Track last attacker for combo
         
@@ -1898,21 +1892,6 @@ class BattleScene(Scene):
             self.next_turn()
             return
         
-        # Crit / Miss Logic - REMOVED as requested
-        is_crit = False
-        is_miss = False
-        # if success and pending_damage > 0 and move_name not in ["Heal", "Pray", "Buffs..."]:
-        #      # 10% Crit, 5% Miss
-        #      roll = random.random()
-        #      if roll < 0.05:
-        #          is_miss = True
-        #          pending_damage = 0
-        #          self.floating_texts.append(FloatingText(target.x + 50, target.y - 20, "MISS", (200, 200, 200)))
-        #      elif roll < 0.15: # 10% chance (0.05 to 0.15)
-        #          is_crit = True
-        #          pending_damage = int(pending_damage * 1.5)
-        #          self.floating_texts.append(FloatingText(target.x + 50, target.y - 40, "CRIT!", (255, 215, 0), size=60))
-
         # Animation Lunge (only if successful)
         target_x_offset = 50
         
@@ -2055,7 +2034,6 @@ class BattleScene(Scene):
         if move_name == "Double Arrow":
             proj_list.append((start_y - 20, end_y - 20, self.manager.assets["arrow"], None, False, False))
             proj_list.append((start_y + 20, end_y + 20, self.manager.assets["arrow"], None, False, False))
-        # REMOVED DUPLICATE CHAIN AND PIERCING BLOCKS HERE TO USE EPIC VERSIONS BELOW
         elif move_name == "Cripple":
              proj_list.append((start_y, end_y, self.manager.assets["arrow_purple"], (200, 0, 255), False, False))
         elif move_name == "Power Strike":
@@ -2354,12 +2332,9 @@ class BattleScene(Scene):
              self.particles.append(RippleEffect(target.x + 130, target.y + 150, 'cyan'))
              self.shake_timer = 25
              
-             # REMOVED INSTANT DAMAGE - Let projectile handle it to avoid double damage
-             # target.hp -= pending_damage
              target.shake_timer = 35
              
              self.floating_texts.append(FloatingText(target.x + 50, target.y, "PIERCING!", (0, 255, 255)))
-             # self.floating_texts.append(FloatingText(target.x + 50, target.y + 50, f"-{pending_damage}", (255, 0, 255))) # Projectile will show damage
              skip_hit_fx = True
              if isinstance(attacker, Archer):
                  attacker.hit_pause_timer = 45
@@ -2730,10 +2705,6 @@ class BattleScene(Scene):
         for team in [self.t1, self.t2]:
             for char in team.members:
                 if not char.is_alive():
-                    # Death fade animation - DISABLED to show defeat sprite
-                    # if char.is_dying and char.death_fade_alpha > 0:
-                    #     char.death_fade_alpha = max(0, char.death_fade_alpha - 5)
-                        
                     # Spawn dissolve particles (keep this for effect)
                     if char.is_dying and not char.death_particles_spawned:
                         for _ in range(20):
@@ -2848,6 +2819,22 @@ class BattleScene(Scene):
                     self.pending_server_state = None  # Clear pending state
                     
                     
+                    # Sync full game state from server (Fixes stamina/HP desyncs)
+                    if state.get("teams"):
+                        # Determine which team is which based on player_idx
+                        # Server team 0 is Host, team 1 is Joiner
+                        # If I am Host (0): t1=team0, t2=team1
+                        # If I am Joiner (1): t1=team1, t2=team0
+                        
+                        server_t0 = state["teams"].get("0")
+                        server_t1 = state["teams"].get("1")
+                        
+                        if self.player_idx == 0:
+                            if server_t0: self.sync_team_state(self.t1, server_t0)
+                            if server_t1: self.sync_team_state(self.t2, server_t1)
+                        else:
+                            if server_t1: self.sync_team_state(self.t1, server_t1)
+                            if server_t0: self.sync_team_state(self.t2, server_t0)
                     
                     # Check if turn changed to me
                     # CRITICAL FIX: Only process this if we are currently waiting
@@ -2945,6 +2932,29 @@ class BattleScene(Scene):
                         self.log(f"Connection Error: {result.get('error', 'Unknown') if result else 'No Response'}")
                         self.state = "PLAYER_ACTION"
                         self.next_turn() # Reset buttons
+
+    def sync_team_state(self, local_team, server_team_data):
+        """Sync local team state with server data."""
+        # Sync active index
+        if "active_index" in server_team_data:
+            local_team.active_index = server_team_data["active_index"]
+            
+        # Sync members
+        if "members" in server_team_data:
+            for i, member_data in enumerate(server_team_data["members"]):
+                if i < len(local_team.members):
+                    char = local_team.members[i]
+                    # Sync vital stats
+                    char.hp = member_data.get("hp", char.hp)
+                    char.max_hp = member_data.get("max_hp", char.max_hp)
+                    char.resource = member_data.get("resource", char.resource)
+                    char.max_resource = member_data.get("max_resource", char.max_resource)
+                    char.attack_mod = member_data.get("attack_mod", char.attack_mod)
+                    char.def_mod = member_data.get("def_mod", char.def_mod)
+                    
+                    # Sync effects if needed (optional, might be complex due to object recreation)
+                    # For now, let's trust server for stats and keep local effects for visuals
+
 
 
 
@@ -3899,7 +3909,7 @@ class SceneManager:
         pygame.init()
         pygame.mixer.init()
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-        pygame.display.set_caption("Freaky fighters")
+        pygame.display.set_caption("")
         self.clock = pygame.time.Clock()
         self.assets = {}
         self.sounds = {}
@@ -4096,7 +4106,6 @@ class SceneManager:
         # Load priest_defeat sprite
         try:
             img = pygame.image.load(os.path.join(asset_dir, "priest", "priest_defeat.png")).convert_alpha()
-            # img = pygame.transform.flip(img, True, False) # Removed flip as requested
             self.assets["priest_defeat"] = pygame.transform.scale(img, (270, 270)) # Slightly larger
             print(f"✓ Loaded priest_defeat.png")
         except Exception as e:
@@ -4347,7 +4356,6 @@ class SceneManager:
 
     def game_over(self, result):
         self.current_scene = GameOverScene(self, result)
-
     def run(self):
         running = True
         while running:

@@ -1,0 +1,222 @@
+# ==========================================
+# GLOBAL CONSTANTS & UTILITIES
+# ==========================================
+INITIALIZE Constants
+    SCREEN_WIDTH = 1280
+    SCREEN_HEIGHT = 720
+    THEME = Colors for UI (Dark mode style)
+
+DEFINE Utility Functions
+    FUNCTION hex_to_rgb(hex_code) -> returns (r, g, b)
+    FUNCTION tint_image(image, color) -> returns colored_image
+
+# ==========================================
+# CHARACTER DEFINITIONS
+# ==========================================
+DEFINE CLASS Effect
+    PROPERTIES: name, duration, value
+    METHOD tick() -> decreases duration, returns True if expired
+
+DEFINE CLASS Character
+    PROPERTIES: 
+        name, hp, max_hp, resource, max_resource
+        visual_state (x, y, scale, rotation, animation_timers)
+        effects_list
+    METHOD update_effects() -> applies burn, healing, buffs
+    METHOD regen_resource() -> adds resource per turn
+    METHOD update_idle_particles() -> spawns class-specific ambient particles
+
+    SUBCLASSES:
+        Warrior: 
+            Stats: High HP, Stamina
+            Actions: Slash, Shield Bash, Power Strike, Spin Slash
+        Archer: 
+            Stats: Medium HP, Stamina
+            Actions: Quick Shot, Double Arrow, Piercing, Cripple
+        Mage: 
+            Stats: Low HP, Mana
+            Actions: Magic Bolt, Fireball, Chain, Drain
+        Priest: 
+            Stats: Medium HP, Mana
+            Actions: Smite, Judgement, Holy Nova, Pray
+        Somesh: 
+            Stats: Balanced, Stamina
+            Actions: Charged Spark, Fah!!!, Run Man, Spark
+
+DEFINE CLASS Team
+    PROPERTIES: members (list of Characters), active_index
+    METHOD get_active_member() -> returns current Character
+    METHOD is_defeated() -> returns True if all members dead
+
+# ==========================================
+# GAME LOGIC & SYSTEMS
+# ==========================================
+DEFINE CLASS SceneManager
+    PROPERTIES: screen, assets, sounds, current_scene, mode
+    METHOD load_assets() -> loads images and audio
+    METHOD change_scene(scene_name) -> switches current_scene object
+    METHOD run() -> Main Game Loop (Event -> Update -> Draw)
+
+DEFINE CLASS NetworkClient
+    METHOD create_game(team_data) -> returns game_id
+    METHOD join_game(game_id, team_data) -> returns success
+    METHOD get_state(game_id) -> returns game_state
+    METHOD submit_action(game_id, action) -> sends move to server
+
+DEFINE CLASS Scene (Base Class)
+    METHODS: handle_input, update, draw
+
+# ==========================================
+# VISUAL SYSTEM
+# ==========================================
+DEFINE VISUAL CLASSES
+    CLASS Projectile:
+        Handles movement from source to target
+        Draws trail and image
+        On impact -> deals damage
+    
+    CLASS Particle:
+        Handles physics (velocity, gravity, bounce)
+        Draws shape (circle, spark, energy, etc.)
+        Fades out over life
+    
+    CLASS LightningEffect:
+        Generates procedural lightning bolt lines
+    
+    CLASS RippleEffect:
+        Draws expanding concentric rings
+    
+    CLASS FloatingText / FloatingImage:
+        Shows damage numbers or icons drifting up
+
+    CLASS Button:
+        Handles hover and click detection
+        Draws RPG-style button with border and shadow
+
+# ==========================================
+# SCENE IMPLEMENTATIONS
+# ==========================================
+DEFINE SCENE CLASSES
+    CLASS StartScene:
+        Shows Title "FREAKY ARENA"
+        Buttons: Local Game, Multiplayer, Settings, Exit
+    
+    CLASS SettingsScene:
+        Sliders for Music and SFX volume
+    
+    CLASS MultiplayerScene:
+        Buttons: Create, Join
+        Input field for Game ID
+    
+    CLASS LobbyScene:
+        Waits for opponent to connect
+        Polls server for "ACTIVE" status
+    
+    CLASS SelectScene:
+        Grid of characters
+        Allows selecting 2 characters
+        Weather toggle button
+        Confirm -> Starts BattleScene
+    
+    CLASS BattleScene:
+        PROPERTIES: 
+            Team1 (Player/Host), Team2 (AI/Opponent)
+            VisualControllers (Shake, Flash, SlowMo, Vignette)
+            WeatherSystem (Rain, Clouds)
+        
+        METHOD init():
+            Setup teams, positions, and weather effects
+        
+        METHOD next_turn():
+            Check for Victory/Defeat
+            Handle character death (auto-switch)
+            Regenerate resources
+            If Player Turn: Show Action Buttons (Attack, Tag, Skip)
+            If AI Turn: Run AI Logic
+            If Multiplayer Wait: Poll Server
+            
+        METHOD execute_move(attacker, target, move):
+            Deduct resource
+            Calculate damage
+            Set Animation (Charge, Cast, Fire)
+            Spawn Projectiles (Arrow, Fireball) OR Trigger Instant Effect (Lightning)
+            Queue next turn with delay
+            
+        METHOD update():
+            Update all particles, projectiles, UI animations
+            Handle screen shake and visual effects
+            If Multiplayer: Sync state with server (HP, Resource, Turn)
+            Update Character Visuals (Breathing, Bobbing, Shadows)
+            
+        METHOD draw():
+            Draw Background & Clouds
+            Draw Characters (with effects: Aura, Trail, Death Fade)
+            Draw Projectiles & Particles
+            Draw UI (HP Bars, Resource Bars, Action Menu, Battle Log)
+
+    CLASS GameOverScene:
+        Shows Winner
+        Button: Return to Main Menu
+
+# ==========================================
+# SERVER LOGIC
+# ==========================================
+INITIALIZE Server
+    Setup Flask App
+    Initialize In-Memory Game Storage (games = {})
+
+DEFINE Helper Functions
+    FUNCTION create_team(class_list) -> returns Team object with Character instances
+
+DEFINE CLASS Game (Server Side)
+    PROPERTIES: 
+        id (UUID), teams (dict), turn (0 or 1), status (WAITING/ACTIVE/FINISHED)
+        winner, message, last_action, weather, last_seen (heartbeat)
+    
+    METHOD to_dict() -> returns JSON-serializable game state
+    
+    METHOD apply_action(player_idx, action_data):
+        Validate Game Active & Player Turn
+        IF action_type == "tag":
+            Handle Team Switch
+            Update active_index
+            Advance Turn
+        IF action_type == "attack":
+            Validate Move & Resource Cost
+            Deduct Resource
+            Calculate Damage & Effects (Server Authority)
+            Apply Damage to Target HP
+            Apply Effects (Burn, Weakness)
+            Handle Healing & Mana Regen
+            Check Death -> Auto-switch if needed
+            Check Win Condition -> Set Status FINISHED if team defeated
+            Advance Turn
+        
+        RETURN updated state
+
+DEFINE API Endpoints
+    ROUTE / (GET) -> Returns Server Status
+    
+    ROUTE /create (POST) -> 
+        Creates new Game instance
+        Sets Host Team (Player 0)
+        Returns game_id
+    
+    ROUTE /join (POST) -> 
+        Finds Game by ID
+        Sets Joiner Team (Player 1)
+        Sets Status to ACTIVE
+        Returns success
+    
+    ROUTE /state/<game_id> (GET) -> 
+        Updates Heartbeat for player
+        Returns current Game State (JSON)
+    
+    ROUTE /action (POST) -> 
+        Receives Action (Attack/Tag)
+        Calls game.apply_action()
+        Returns result & new state
+
+MAIN EXECUTION
+    Initialize SceneManager
+    Call game.run()

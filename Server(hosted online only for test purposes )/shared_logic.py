@@ -174,7 +174,7 @@ ACTION_DATA = {
     "Smite": {"cost": 10, "info": "20 Dmg"},
     "Judgement": {"cost": 20, "info": "35 Dmg"},
     "Holy Nova": {"cost": 25, "info": "20 AoE"},
-    "Pray": {"cost": 15, "info": "Self Heal"},
+    "Pray": {"cost": 40, "info": "Self Heal"},
     "Charged Spark": {"cost": 12, "info": "50 Dmg"},
     "Run Man": {"cost": 15, "info": "35 Dmg"},
     "Spark": {"cost": 25, "info": "50 AoE"},
